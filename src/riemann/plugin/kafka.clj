@@ -43,14 +43,14 @@
       (try
         (let [stream-map     (.createMessageStreams inq {topic (int 1)})
               [stream & _]   (get stream-map topic)
-              msg-seq        (iterator-seq (.iterator ^KafkaStream stream))
+              msg-iterator   (.iterator ^KafkaStream stream)
               decoder        (:decoder config protobuf-decoder)
               commit-per-msg (:commit.per.msg config true)]
           (when (not commit-per-msg)
             (info "Commission from riemann-kafka consumer is disabled."
                   "DO NOT disable :auto.commit.enable in your consumer config."))
-          (doseq [msg msg-seq :while @running? :when @core]
-            (doseq [event (safe-decode decoder msg)]
+          (while (.hasNext msg-iterator)
+            (doseq [event (safe-decode decoder (.next msg-iterator))]
               (debug "got input event: " event)
               (stream! @core event))
             (when commit-per-msg (.commitOffsets inq)))
